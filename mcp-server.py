@@ -164,5 +164,5 @@ def delete_note(note_id: str) -> dict[str, Any]:
 
 
 if __name__ == "__main__":
-    # FastMCP serves over stdio by default, suitable for MCP clients.
-    mcp.run()
+    # Keep startup banners off stdout so stdio MCP clients receive clean JSON-RPC.
+    mcp.run(show_banner=False)
