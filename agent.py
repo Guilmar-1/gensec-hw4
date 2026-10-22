@@ -17,10 +17,11 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 # without requiring the project to live at a particular absolute path.
 PROJECT_DIR = Path(__file__).resolve().parent
 MCP_SERVER_PATH = PROJECT_DIR / "mcp-server.py"
+MEMORY_FILE_PATH = PROJECT_DIR / "memory.jsonl"
 
 
 async def build_agent() -> tuple[Any, MultiServerMCPClient]:
-    """Connect to the local MCP server and build a Gemini-powered agent."""
+    """Connect both MCP servers and build a Gemini-powered study assistant."""
     api_key = os.getenv("GOOGLE_API_KEY")
     if not api_key:
         raise RuntimeError(
@@ -37,13 +38,21 @@ async def build_agent() -> tuple[Any, MultiServerMCPClient]:
                 "transport": "stdio",
                 "command": sys.executable,
                 "args": [str(MCP_SERVER_PATH)],
-            }
+            },
+            # This official package release runs on the installed Node 20 runtime.
+            # The current 2.x release requires Node 24 or later.
+            "memory": {
+                "transport": "stdio",
+                "command": "npx",
+                "args": ["--yes", "@modelcontextprotocol/server-memory@1.0.0"],
+                "env": {"MEMORY_FILE_PATH": str(MEMORY_FILE_PATH)},
+            },
         }
     )
     tools = await mcp_client.get_tools()
 
     # Set GEMINI_MODEL to override the default model name.
-    model_name = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
     model = ChatGoogleGenerativeAI(model=model_name, google_api_key=api_key)
     agent = create_agent(
         model,
@@ -52,8 +61,14 @@ async def build_agent() -> tuple[Any, MultiServerMCPClient]:
             "You are a helpful study assistant. Use the Study Notes tools to answer "
             "questions from the user's saved notes. Search notes before answering "
             "questions about their saved material. Create notes when the user asks "
-            "you to save or remember information. Confirm note changes clearly, and "
-            "never claim a tool action succeeded unless its result confirms success."
+            "you to save or remember information. Use Memory tools to maintain a "
+            "knowledge graph: create_entities adds entities with initial observations, "
+            "add_observations appends facts to existing entities, create_relations "
+            "connects entities, search_nodes finds matching graph entries, "
+            "open_nodes reads named entities and their relationships, and read_graph "
+            "reads the complete graph. Use both kinds of storage when asked. Confirm "
+            "changes clearly, and never claim an action succeeded unless its tool "
+            "result confirms success."
         ),
     )
     return agent, mcp_client
