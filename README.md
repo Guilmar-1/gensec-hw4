@@ -1,0 +1,1 @@
+The Study Notes and Memory MCP Agent is a Gemini-powered study assistant that uses two MCP servers to manage cybersecurity notes and maintain a persistent knowledge graph. It can create, search, and update notes while connecting related concepts to support learning and information retrieval.
